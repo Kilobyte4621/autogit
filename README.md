@@ -137,7 +137,7 @@ The termination layer uses a dynamic `terminate_with` routine. If running standa
 
 Before descending into lower-level project folders, Autogit registers your starting path location. Regardless of nested step errors, network drops, or execution cancellations, it safely returns your terminal session to the exact directory you were in before triggering the script.
 
-### 3. Private Configuration Protection (Automatic Gitignore Guards)
+### 3. Private Configuration Protection (Automatic `.gitignore` Guards)
 
 To prevent tracking metadata, custom workflows, or local workspace names from leaking into remote public repositories, Autogit inspects its own environment tracking. It intercepts initialization workflows and automatically configures a `.gitignore` guard rule for `.autogit_list`.
 
