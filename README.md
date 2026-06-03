@@ -41,6 +41,7 @@ echo "source ~/scripts/autogit/autogit.sh" >> ~/.bashrc
 source ~/.bashrc
 
 ```
+> You can also use the `add2bash` tool, available in the ShellUtilities repository.
 
 Once sourced, invoke the engine natively from anywhere in your filesystem simply by typing:
 
