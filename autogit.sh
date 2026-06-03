@@ -1,4 +1,4 @@
-# Version Details: v0.9
+# Version Details: v0.12
 #!/usr/bin/env bash
 # Dual-Mode Architecture: Works as an importable Shell Function or a direct execution script.
 
@@ -15,7 +15,8 @@ autogit() {
     local REPOS_CRITICAL_FAIL FAIL_MESSAGES SYNC_ERRORS GREEN YELLOW RED BLUE NC
     local dir dirname line STATUS_OUT GIT_STATUS_EXIT MOD_COUNT LOCAL REMOTE BASE
     local r i MAIN_CHOICE MSG_CHOICE GLOBAL_MSG LOCAL_MSG SSH_URL CURRENT_BRANCH err
-    local FORCE_YES ORIGINAL_PWD args GITIGNORE_FILE
+    local FORCE_YES ORIGINAL_PWD args GITIGNORE_FILE existing_repos tracked_map missing_repos
+    local DEFAULT_CONF_BRANCH
 
     # Dynamic termination handler depending on global flag
     terminate_with() {
@@ -29,6 +30,7 @@ autogit() {
     # Base Paths (Hardcoded to your specific scripts location)
     PARENT_DIR="$HOME/scripts"
     LIST_FILE="$PARENT_DIR/autogit/.autogit_list"
+    GITIGNORE_FILE="$PARENT_DIR/autogit/.gitignore"
 
     # Default Configurations
     MODE_ALL=false
@@ -69,7 +71,7 @@ autogit() {
         return 1
     }
 
-    echo -e "${BLUE}=== Autogit: Repository Orchestrator (v0.9) ===${NC}\n"
+    echo -e "${BLUE}=== Autogit: Repository Orchestrator (v0.12) ===${NC}\n"
 
     # 1. ARGUMENT PARSER
     args=("$@")
@@ -99,22 +101,66 @@ autogit() {
     ORIGINAL_PWD="$PWD"
     cd "$PARENT_DIR" || terminate_with 1
 
-    # Safe Template Generation (With User Confirmation)
-    if [ "$MODE_ALL" = false ] && [ ! -f "$LIST_FILE" ]; then
-        if confirm_action ".autogit_list template not found. Create a default configurations file?"; then
-            echo -e "${GREEN}Creating default template tracking configurations...${NC}"
+    # Ensure Private Configuration Protection is set up right away
+    if [ ! -f "$GITIGNORE_FILE" ]; then
+        touch "$GITIGNORE_FILE"
+    fi
+    if ! grep -qxF ".autogit_list" "$GITIGNORE_FILE"; then
+        echo ".autogit_list" >> "$GITIGNORE_FILE"
+    fi
+
+    # SMART BACKWARD-COMPATIBLE SYNCHRONIZATION ENGINE
+    if [ "$MODE_ALL" = false ] && [ -f "$LIST_FILE" ]; then
+        # Cross-reference existing physical directories against tracked targets
+        declare -A tracked_map
+        while IFS= read -r line || [ -n "$line" ]; do
+            line=$(echo "$line" | xargs)
+            if [[ "$line" =~ ^# ]]; then
+                line=$(echo "$line" | sed 's/^#[[:space:]]*//' | xargs)
+            fi
+            if [ -n "$line" ]; then
+                tracked_map["$line"]=1
+            fi
+        done < "$LIST_FILE"
+
+        missing_repos=()
+        for dir in */ ; do
+            dir="${dir%/}"
+            if [ -d "$dir/.git" ] && [ "$dir" != "autogit" ]; then
+                if [ -z "${tracked_map[$dir]}" ]; then
+                    missing_repos+=("$dir")
+                fi
+            fi
+        done
+
+        # If missing repos are found, ask to safely append them
+        if [ ${#missing_repos[@]} -gt 0 ]; then
+            echo -e "${YELLOW}💡 Discovered ${#missing_repos[@]} new untracked local git repositories:${NC}"
+            for r in "${missing_repos[@]}"; do echo "   -> $r"; done
+            if confirm_action "Append these new repositories to your tracking list safely?"; then
+                {
+                    echo ""
+                    echo "# Automatically appended untracked repositories:"
+                    for r in "${missing_repos[@]}"; do
+                        echo "$r"
+                    done
+                } >> "$LIST_FILE"
+                echo -e "${GREEN}✓ Tracking list updated dynamically without modifications to your existing setups!${NC}"
+            fi
+        fi
+    elif [ "$MODE_ALL" = false ] && [ ! -f "$LIST_FILE" ]; then
+        if confirm_action ".autogit_list not found. Create a default configurations file?"; then
+            echo -e "${GREEN}Creating base tracking configurations file...${NC}"
             mkdir -p "$(dirname "$LIST_FILE")"
             echo "# Add repository folder names below" > "$LIST_FILE"
-            echo "ShellUtilities" >> "$LIST_FILE"
-            echo "ArchivePar2" >> "$LIST_FILE"
         else
-            echo -e "${RED}Error: Cannot proceed without a valid repository tracking source matrix.${NC}"
+            echo -e "${RED}Error: Cannot proceed without a tracking source matrix.${NC}"
             cd "$ORIGINAL_PWD" || terminate_with 1
             terminate_with 1
         fi
     fi
 
-    # Build evaluation list
+    # Build final execution evaluation list
     if [ "$MODE_ALL" = true ]; then
         echo -e "${YELLOW}Scan Mode Active (--all). Preparing directory matrix...${NC}"
         for dir in */ ; do
@@ -155,19 +201,6 @@ autogit() {
                 REPOS_CRITICAL_FAIL+=("$repo")
                 FAIL_MESSAGES+=("Could not access directory")
                 continue
-            fi
-
-            # SMART .GITIGNORE GUARD ENGINE
-            if [ "$repo" = "autogit" ]; then
-                GITIGNORE_FILE="$PARENT_DIR/autogit/.gitignore"
-                if [ ! -f "$GITIGNORE_FILE" ]; then
-                    echo -e "  ${YELLOW}🛡️ Private Configuration Protection: Creating missing .gitignore...${NC}"
-                    touch "$GITIGNORE_FILE"
-                fi
-                if ! grep -qxF ".autogit_list" "$GITIGNORE_FILE"; then
-                    echo -e "  ${YELLOW}🛡️ Private Configuration Protection: Appending '.autogit_list' to .gitignore...${NC}"
-                    echo ".autogit_list" >> "$GITIGNORE_FILE"
-                fi
             fi
 
             STATUS_OUT=$(git status --porcelain 2>/dev/null)
@@ -375,9 +408,19 @@ autogit() {
                         if [[ "$SSH_URL" =~ ^git@github\.com: ]]; then
                             echo "--------------------------------------------------"
                             git remote add origin "$SSH_URL" 2>/dev/null
-                            CURRENT_BRANCH=$(git branch --show-current)
-                            [ -z "$CURRENT_BRANCH" ] && CURRENT_BRANCH="main"
                             
+                            # ADVANCED FAULT-TOLERANT BRANCH DETECTION
+                            CURRENT_BRANCH=$(git branch --show-current 2>/dev/null)
+                            if [ -z "$CURRENT_BRANCH" ]; then
+                                CURRENT_BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null)
+                            fi
+                            if [ -z "$CURRENT_BRANCH" ]; then
+                                # Pull default initialization name from machine configuration context
+                                DEFAULT_CONF_BRANCH=$(git config --get init.defaultBranch 2>/dev/null)
+                                CURRENT_BRANCH="${DEFAULT_CONF_BRANCH:-main}"
+                            fi
+                            
+                            echo -e "Detected structural branch framework context: ${GREEN}$CURRENT_BRANCH${NC}"
                             git push -u origin "$CURRENT_BRANCH"
                             if [ $? -ne 0 ]; then SYNC_ERRORS+=("Failed remote push for $repo"); fi
                             echo "--------------------------------------------------"
@@ -426,7 +469,7 @@ autogit() {
             ;;
     esac
 
-    # 6. POST-ACTION OPERATION SUMMARY
+    # 6. POST-ACTION SUMMARY
     echo -e "\n================================================"
     echo -e "${BLUE}Post-Action Sync Execution Report:${NC}"
     echo "================================================"
