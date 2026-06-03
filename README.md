@@ -46,7 +46,7 @@ source ~/.bashrc
 
 ```
 
-> 💡 Pro-Tip (Dynamic Sourcing): If you prefer not to hardcode individual source lines manually, you can use the `add2bash` utility available in the **ShellUtilities** repository. This tool allows you to dynamically sweep, clean, and import an entire directory of independent .sh function scripts directly into your active profile environment in one clean sweep.
+> 💡 Pro-Tip (Dynamic Sourcing): If you prefer not to hardcode individual source lines manually, you can use the `add2bash` utility available in the **shellutilities** repository. This tool allows you to dynamically sweep, clean, and import an entire directory of independent .sh function scripts directly into your active profile environment in one clean sweep.
 
 Once sourced, invoke the engine natively from anywhere in your filesystem simply by typing:
 
