@@ -10,13 +10,17 @@ Whether you run it as a standalone script or source it as a dynamic shell functi
 
 ### 1. Installation & Environment Set Up
 
-Clone or copy `autogit.sh` into your dedicated scripts workspace directory (e.g., `~/scripts/autogit/`):
+Clone the repository directly into your dedicated scripts workspace directory:
 
 ```bash
-mkdir -p ~/scripts/autogit
-# Save the autogit.sh script code into this directory
-chmod +x ~/scripts/autogit/autogit.sh
+# Create and jump into your scripts directory
+mkdir -p ~/scripts && cd ~/scripts
 
+# Clone the orchestrator repository
+git clone https://github.com/Kilobyte4621/autogit.git
+
+# Make the core engine script executable
+chmod +x ~/scripts/autogit/autogit.sh
 ```
 
 ### 2. Dual-Mode Deployment
