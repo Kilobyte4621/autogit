@@ -1,12 +1,6 @@
-# Version Details: v0.12
+# Version Details: v0.14
 #!/usr/bin/env bash
 # Dual-Mode Architecture: Works as an importable Shell Function or a direct execution script.
-
-# Rock-solid top-level script detection engine
-GLOBAL_IS_STANDALONE=false
-if [[ "$0" == *"${BASH_SOURCE[0]}"* ]] || [[ "$(basename "$0")" == "autogit.sh" ]]; then
-    GLOBAL_IS_STANDALONE=true
-fi
 
 autogit() {
     # Use local variables so they don't leak into your active terminal session
@@ -487,6 +481,9 @@ autogit() {
 }
 
 # INTELLIGENT RUN TRIGGER
-if [ "$GLOBAL_IS_STANDALONE" = true ]; then
+# Se o script for o principal da execução, define como STANDALONE e roda a função automaticamente
+GLOBAL_IS_STANDALONE=false
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]] || (( ${#BASH_SOURCE[@]} == 1 )); then
+    GLOBAL_IS_STANDALONE=true
     autogit "$@"
 fi
